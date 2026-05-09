@@ -46,6 +46,50 @@ SIFIX adds an **AI security layer** between the user and the blockchain:
 
 ## Architecture
 
+```mermaid
+graph TB
+    subgraph BROWSER["USER'S BROWSER"]
+        DAPP_UI[Any dApp<br/>Uniswap, Aave...]
+        EXT_UI[SIFIX Extension<br/>Chrome MV3]
+        MM[MetaMask / Web3 Wallet]
+        DAPP_UI -->|TX request| EXT_UI
+        EXT_UI -->|intercepted TX| MM
+    end
+
+    subgraph SIFIX["SIFIX dApp (Next.js 16)"]
+        DASH[Dashboard<br/>12 Pages]
+        API[35 API Routes]
+        DB[(Prisma SQLite<br/>13 Models)]
+        AGENT["@sifix/agent SDK"]
+        DASH --> API
+        API --> DB
+        API --> AGENT
+    end
+
+    subgraph ZG["0G Galileo Infrastructure"]
+        CHAIN[0G Chain<br/>EVM]
+        COMPUTE[0G Compute<br/>AI Inference]
+        STORAGE[0G Storage<br/>Evidence]
+    end
+
+    EXT_UI -->|POST /api/v1/analyze| API
+    MM -->|sign TX| CHAIN
+    AGENT --> COMPUTE
+    AGENT --> STORAGE
+    AGENT --> CHAIN
+
+    style BROWSER fill:#1a1a2e,color:#fff
+    style SIFIX fill:#16213e,color:#fff
+    style ZG fill:#0f3460,color:#fff
+    style EXT_UI fill:#3b9eff,color:#fff
+    style AGENT fill:#a855f7,color:#fff
+    style COMPUTE fill:#22c55e,color:#fff
+    style STORAGE fill:#f59e0b,color:#000
+```
+
+<details>
+<summary>📐 ASCII Version</summary>
+
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                        USER'S BROWSER                                │
@@ -93,10 +137,62 @@ SIFIX adds an **AI security layer** between the user and the blockchain:
                     │  └──────────┘  └──────────┘  └────────────┘  │
                     └───────────────────────────────────────────────┘
 ```
+</details>
 
 ---
 
 ## How It Works — Detailed
+
+### End-to-End Transaction Security
+
+```mermaid
+flowchart LR
+    subgraph STEP1["1. INTERCEPT"]
+        A1[User initiates TX<br/>on any dApp] --> A2[Extension intercepts<br/>before signing]
+    end
+
+    subgraph STEP2["2. SIMULATE"]
+        B1[TransactionSimulator<br/>viem + 0G Galileo] --> B2[SimulationResult<br/>gas, balances, events]
+    end
+
+    subgraph STEP3["3. ANALYZE"]
+        C1[Fetch Threat Intel<br/>historical context] --> C2[AI Risk Analysis<br/>0G Compute / LLM] --> C3[RiskScore 0-100<br/>BLOCK / WARN / ALLOW]
+    end
+
+    subgraph STEP4["4. STORE"]
+        D1[0G Storage<br/>immutable evidence] --> D2[rootHash<br/>on-chain proof]
+    end
+
+    subgraph STEP5["5. LEARN"]
+        E1[Save to DB<br/>PrismaThreatIntel] --> E2[Next scan gets<br/>richer context]
+    end
+
+    STEP1 --> STEP2 --> STEP3 --> STEP4 --> STEP5
+
+    style STEP1 fill:#22c55e,color:#fff
+    style STEP2 fill:#3b9eff,color:#fff
+    style STEP3 fill:#a855f7,color:#fff
+    style STEP4 fill:#f59e0b,color:#000
+    style STEP5 fill:#ef4444,color:#fff
+```
+
+### AI Learning Loop
+
+```mermaid
+flowchart TD
+    SCAN([Scan Transaction]) --> ANALYZE[AI Analyze<br/>with historical context]
+    ANALYZE --> STORE_0G[Store to 0G Storage<br/>immutable proof]
+    STORE_0G --> SAVE_DB[Save to local DB<br/>ScanHistory table]
+    SAVE_DB --> NEXT([Next scan of same address<br/>→ richer context → better analysis])
+
+    NEXT -.->|feedback loop| SCAN
+
+    style SCAN fill:#3b9eff,color:#fff
+    style ANALYZE fill:#a855f7,color:#fff
+    style STORE_0G fill:#f59e0b,color:#000
+    style SAVE_DB fill:#22c55e,color:#fff
+    style NEXT fill:#ef4444,color:#fff
+```
 
 ### Step 1: Transaction Interception
 
