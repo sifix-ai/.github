@@ -1,0 +1,489 @@
+<div align="center">
+
+# SIFIX
+
+### AI-Powered Wallet Security for Web3
+
+**Autonomous AI agent that intercepts, simulates, and analyzes blockchain transactions in real-time to protect users from scams, phishing, and malicious contracts.**
+
+[![0G Galileo](https://img.shields.io/badge/Network-0G%20Galileo%20Testnet-blue)](https://chainscan-galileo.0g.ai)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.4-blue.svg)](https://www.typescriptlang.org/)
+
+[Architecture](#-architecture) · [How It Works](#-how-it-works) · [Repositories](#-repositories) · [Quick Start](#-quick-start) · [Tech Stack](#-tech-stack)
+
+</div>
+
+---
+
+## The Problem
+
+Web3 users lose billions annually to:
+- **Phishing sites** mimicking legitimate dApps
+- **Malicious smart contracts** with hidden backdoors
+- **Approval scams** draining wallets silently
+- **Rug pulls** from seemingly legitimate projects
+- **Complex DeFi interactions** with hidden risks
+
+Traditional security tools are reactive — they warn after the damage is done. **SIFIX is proactive**: it intercepts transactions *before* they're signed, simulates execution, and uses AI to explain risks in plain language.
+
+---
+
+## The Solution
+
+SIFIX adds an **AI security layer** between the user and the blockchain:
+
+```
+1. INTERCEPT  → Catch transactions before signing (browser extension)
+2. SIMULATE   → Run transaction in safe sandbox (viem on 0G Galileo)
+3. ANALYZE    → AI evaluates risks with historical context (0G Compute)
+4. STORE      → Save immutable evidence on-chain (0G Storage)
+5. LEARN      → Build threat intel from every scan (PrismaThreatIntel)
+6. PROTECT    → User sees clear risk explanation + recommendation
+```
+
+---
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                        USER'S BROWSER                                │
+│                                                                      │
+│  ┌──────────────┐     ┌──────────────────┐     ┌────────────────┐   │
+│  │  Any dApp     │────▶│  SIFIX Extension │────▶│   MetaMask /   │   │
+│  │  (Uniswap...) │     │  (Chrome MV3)    │     │   Web3 Wallet  │   │
+│  └──────────────┘     │                  │     └───────┬────────┘   │
+│                       │ • TX Interceptor │             │             │
+│                       │ • Domain Scanner │             │             │
+│                       │ • Shield Badge   │             │             │
+│                       └────────┬─────────┘             │             │
+│                                │                       │             │
+└────────────────────────────────┼───────────────────────┼─────────────┘
+                                 │                       │
+                    ┌────────────▼───────────────────────▼────────┐
+                    │            SIFIX dApp (Next.js 16)           │
+                    │                                              │
+                    │  ┌────────────┐  ┌──────────┐  ┌─────────┐  │
+                    │  │ Dashboard  │  │  35 API   │  │ Prisma  │  │
+                    │  │ (12 pages) │  │  Routes   │  │ SQLite  │  │
+                    │  └────────────┘  └─────┬─────┘  └────┬────┘  │
+                    │                        │              │        │
+                    │  ┌─────────────────────▼──────────────▼────┐  │
+                    │  │         @sifix/agent (SDK)               │  │
+                    │  │                                         │  │
+                    │  │  ┌──────────┐  ┌──────────┐  ┌──────┐  │  │
+                    │  │  │ Simulator│  │ AI Analyz │  │Storage│  │  │
+                    │  │  │ (viem)   │  │ (0G/LLM) │  │Client │  │  │
+                    │  │  └──────────┘  └──────────┘  └──────┘  │  │
+                    │  │                                         │  │
+                    │  │  ┌──────────────┐  ┌────────────────┐   │  │
+                    │  │  │ ComputeClient│  │ ThreatIntel    │   │  │
+                    │  │  │ (0G Compute) │  │ (Prisma)       │   │  │
+                    │  │  └──────────────┘  └────────────────┘   │  │
+                    │  └─────────────────────────────────────────┘  │
+                    └──────────────────────┬────────────────────────┘
+                                           │
+                    ┌──────────────────────▼────────────────────────┐
+                    │           0G Galileo Infrastructure            │
+                    │                                               │
+                    │  ┌──────────┐  ┌──────────┐  ┌────────────┐  │
+                    │  │ 0G Chain │  │ 0G Compute│  │ 0G Storage │  │
+                    │  │ (EVM)    │  │ (AI Inf.) │  │ (Evidence) │  │
+                    │  └──────────┘  └──────────┘  └────────────┘  │
+                    └───────────────────────────────────────────────┘
+```
+
+---
+
+## How It Works — Detailed
+
+### Step 1: Transaction Interception
+
+When a user initiates any blockchain transaction (swap, transfer, approve, etc.):
+
+1. The **SIFIX Extension** injects a `tx-interceptor.js` script into the page's `MAIN` world
+2. This script wraps `window.ethereum.request()` with a proxy
+3. When `eth_sendTransaction` or `eth_signTransaction` is detected, it's intercepted before reaching MetaMask
+4. The transaction data (`from`, `to`, `value`, `data`) is sent to the background service worker
+5. Background calls `POST /api/v1/analyze` on the SIFIX dApp with the transaction parameters
+
+### Step 2: Transaction Simulation
+
+The `@sifix/agent` SDK's `TransactionSimulator` (powered by viem):
+
+1. Constructs a `publicClient.call()` to the 0G Galileo RPC
+2. Simulates the transaction against the latest block state
+3. Captures: success/failure, gas usage, balance changes, events, revert reasons
+4. Returns a `SimulationResult` — no actual state change on-chain
+
+### Step 3: Threat Intelligence Lookup
+
+Before AI analysis, the agent fetches **historical context**:
+
+1. `PrismaThreatIntel.getAddressIntel(address)` queries the local SQLite database
+2. Looks up the last 50 scans involving this address
+3. Aggregates: average risk score, max risk, known threats, risk distribution, recent scan history
+4. This historical data is fed to the AI as context — so it **learns from past scans**
+
+### Step 4: AI Risk Analysis
+
+The `AIAnalyzer` sends a structured prompt to the AI containing:
+- Transaction details (from, to, value, calldata)
+- Simulation results (gas, balance changes, revert reason)
+- Historical threat intel (past scans, risk patterns)
+
+**AI Providers (priority order):**
+1. **0G Compute** — Decentralized AI inference on 0G network (recommended)
+2. **OpenAI-compatible** — Fallback: OpenAI, Groq, OpenRouter, Ollama, Together AI, etc.
+
+Returns:
+- `riskScore` (0-100) — numerical risk assessment
+- `confidence` (0-1) — how confident the AI is
+- `reasoning` — human-readable explanation of risks
+- `threats[]` — specific threats identified
+- `recommendation` — BLOCK / WARN / ALLOW
+
+### Step 5: Evidence Storage
+
+Every analysis is **permanently stored** on 0G Storage:
+
+1. Analysis JSON is written to a temp file
+2. A Merkle tree is generated from the data
+3. The file is uploaded to 0G Storage via the indexer
+4. Returns an immutable `rootHash` that can be verified on the explorer
+5. Anyone can download and verify the evidence via `/api/v1/storage/[hash]/download`
+
+### Step 6: Learning Loop
+
+After each analysis, the result is saved to the local database:
+
+1. `PrismaThreatIntel.saveScanResult()` stores the scan in `ScanHistory` table
+2. Next time the same address is scanned, the AI gets richer historical context
+3. Over time, the agent builds a **profile** for each address: risk trends, known threats, behavior patterns
+4. This makes each subsequent analysis more informed than the last
+
+### Domain Safety (Background)
+
+Independently from transaction interception, the extension **auto-scans every website** the user visits:
+
+1. User navigates to a URL → `chrome.tabs.onUpdated` fires
+2. Background checks: local cache → local scam blacklist → local safe list → SIFIX API → GoPlus API
+3. Badge color updates: green (safe), amber (warning), red (danger)
+4. Floating shield overlay appears on the page showing the safety status
+5. Results are cached per session to avoid redundant API calls
+
+---
+
+## Repositories
+
+| Repository | Description | Version |
+|---|---|---|
+| [sifix-agent](https://github.com/sifix-ai/sifix-agent) | AI Security Agent SDK — simulation, analysis, 0G Storage, threat intel | v1.5.0 |
+| [sifix-dapp](https://github.com/sifix-ai/sifix-dapp) | Web Dashboard + API Backend — Next.js 16, Prisma, 35 API routes | v1.0.0 |
+| [sifix-extension](https://github.com/sifix-ai/sifix-extension) | Chrome Extension — TX interception, domain scanning, shield overlay | v0.2.0 |
+
+---
+
+## Repositories Deep Dive
+
+### @sifix/agent — AI Security Agent SDK
+
+The brain of SIFIX. A TypeScript SDK that orchestrates the entire security pipeline.
+
+**Key Components:**
+- `SecurityAgent` — Main orchestrator class
+- `TransactionSimulator` — Simulates TX via viem on 0G Galileo
+- `AIAnalyzer` — Routes to 0G Compute or OpenAI-compatible providers
+- `StorageClient` — Uploads evidence to 0G Storage
+- `ThreatIntelProvider` — Pluggable interface for historical context
+
+```typescript
+import { SecurityAgent } from '@sifix/agent';
+
+const agent = new SecurityAgent({
+  rpcUrl: 'https://evmrpc-testnet.0g.ai',
+  compute: { privateKey, providerAddress },
+  storage: { indexerUrl, privateKey },
+  threatIntel: new PrismaThreatIntel(),
+});
+
+const result = await agent.analyzeTransaction({
+  from: '0x...', to: '0x...', data: '0x...', value: 0n,
+});
+// result.analysis.riskScore → 0-100
+// result.analysis.recommendation → BLOCK | WARN | ALLOW
+// result.storageRootHash → 0G Storage proof
+```
+
+See [sifix-agent/README.md](https://github.com/sifix-ai/sifix-agent/blob/master/README.md) for full API reference.
+
+---
+
+### sifix-dapp — Web Dashboard + API Backend
+
+The control center. Built on Next.js 16 with App Router.
+
+**API Routes (35 endpoints):**
+- Scanning: check-domain, scan, scan/[address]
+- Analysis: analyze, extension/analyze
+- Threats: threats, threats/report, reports, reports/[id]/vote
+- Intelligence: address-tags, tags, watchlist, scam-domains
+- System: stats, leaderboard, history, settings
+- Auth: auth/nonce, auth/verify, auth/verify-token
+- Storage: storage/[hash]/download
+- Identity: agentic-id
+
+**Dashboard Pages (12):**
+Dashboard Home, Checker, Tags, Watchlist, Threat Feed, Scan History, Leaderboard, Agent ID, Analytics, Extension Setup, Settings
+
+**Prisma Models (13):**
+Address, ThreatReport, TransactionScan, ReputationScore, UserProfile, SearchHistory, SyncLog, UserSettings, ExtensionSession, ScamDomain, AddressTag, Watchlist, ScanHistory
+
+See [sifix-dapp/README.md](https://github.com/sifix-ai/sifix-dapp/blob/master/README.md) for setup guide and full documentation.
+
+---
+
+### sifix-extension — Chrome Extension
+
+The user-facing protector. Minimal and non-intrusive.
+
+**What it does:**
+- Auto-scans every website for phishing/scam indicators
+- Intercepts wallet transactions before signing
+- Shows floating shield badge with safety status
+- Connects to dApp via SIWE (Sign-In with Ethereum) for API access
+
+**Architecture:**
+- Background Service Worker — domain scanning, TX analysis orchestration
+- Content Scripts — TX interceptor (MAIN world), shield badge, warning banners
+- Popup (340x440) — connect/disconnect + protection toggle
+- Local IndexedDB — transaction history cache
+
+**Multi-Layer Domain Safety:**
+1. Session cache → 2. Local scam blacklist → 3. Local safe list → 4. SIFIX API → 5. GoPlus fallback
+
+See [sifix-extension/README.md](https://github.com/sifix-ai/sifix-extension/blob/master/README.md) for build and installation instructions.
+
+---
+
+## Quick Start
+
+### Prerequisites
+
+- Node.js 18+
+- pnpm (recommended) or npm
+- MetaMask or compatible Web3 wallet
+- 0G Galileo Testnet configured in wallet
+
+### 1. Clone All Repos
+
+```bash
+git clone https://github.com/sifix-ai/sifix-agent.git
+git clone https://github.com/sifix-ai/sifix-dapp.git
+git clone https://github.com/sifix-ai/sifix-extension.git
+```
+
+### 2. Setup Agent SDK
+
+```bash
+cd sifix-agent
+pnpm install
+pnpm build
+```
+
+### 3. Setup dApp
+
+```bash
+cd sifix-dapp
+pnpm install
+cp .env.example .env
+# Edit .env with your configuration
+pnpm db:push
+pnpm dev
+```
+
+### 4. Setup Extension
+
+```bash
+cd sifix-extension
+pnpm install
+pnpm build
+# Load build/chrome-mv3-prod/ in Chrome as unpacked extension
+```
+
+### 5. Connect
+
+1. Open the SIFIX dApp in your browser
+2. Connect your wallet (0G Galileo Testnet)
+3. The extension auto-activates — badge appears on all sites
+
+---
+
+## Tech Stack
+
+| Layer | Technology | Purpose |
+|---|---|---|
+| Frontend | Next.js 16, React 19, TailwindCSS 4 | Dashboard & marketing site |
+| Wallet | Wagmi v3, Viem v2 | Blockchain interactions |
+| Extension | Plasmo 0.88, Chrome MV3 | Browser extension framework |
+| Agent SDK | TypeScript, OpenAI SDK | AI security analysis pipeline |
+| AI Inference | 0G Compute, OpenAI, Groq, Ollama | Risk analysis providers |
+| Database | SQLite via Prisma | Local threat intelligence |
+| Simulation | Viem public client | Transaction simulation |
+| Storage | 0G Storage (0g-storage-ts-sdk) | Immutable evidence storage |
+| Compute | 0G Compute (0g-compute-ts-sdk) | Decentralized AI inference |
+| Blockchain | 0G Galileo Testnet (Chain ID: 16602) | Settlement & reputation |
+| Identity | ERC-7857 (Agentic ID) | Agent identity on-chain |
+| Local Storage | Dexie (IndexedDB) | Extension TX cache |
+
+---
+
+## Risk Scoring
+
+| Score | Level | Recommendation | Description |
+|---|---|---|---|
+| 0-19 | SAFE | ALLOW | No significant risks detected |
+| 20-39 | LOW | ALLOW | Minor concerns, generally safe |
+| 40-59 | MEDIUM | WARN | Moderate risks, review recommended |
+| 60-79 | HIGH | WARN | Significant threats, proceed with caution |
+| 80-100 | CRITICAL | BLOCK | Severe threats, transaction should be blocked |
+
+---
+
+## AI Learning System
+
+SIFIX's AI gets smarter over time through a **learning loop**:
+
+```
+Scan TX → AI Analyze (with historical context)
+                ↓
+         Store to 0G Storage (immutable proof)
+                ↓
+         Save to local DB (ScanHistory table)
+                ↓
+         Next scan of same address → richer context → better analysis
+```
+
+**What the AI learns:**
+- Risk score trends for each address (improving, stable, or deteriorating)
+- Known threat patterns (specific scam types associated with an address)
+- Risk distribution (how often SAFE vs HIGH vs CRITICAL)
+- Community feedback (tags, votes, reports)
+
+**This means:**
+- First scan of a new address → baseline analysis
+- 10th scan → AI knows the address's history and patterns
+- 100th scan → AI has a detailed risk profile and can detect anomalies
+
+---
+
+## Environment Variables
+
+### dApp (.env)
+
+```env
+# Database
+DATABASE_URL="file:./dev.db"
+
+# 0G Galileo Chain
+NEXT_PUBLIC_ZG_RPC_URL="https://evmrpc-testnet.0g.ai"
+NEXT_PUBLIC_ZG_CHAIN_ID="16602"
+
+# WalletConnect
+NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=""
+
+# AI Provider (fallback when 0G Compute not configured)
+AI_API_KEY=""
+AI_BASE_URL=""
+AI_MODEL=""
+
+# 0G Storage (server-side wallet)
+ZG_INDEXER_URL="https://indexer-storage-testnet-turbo.0g.ai"
+STORAGE_PRIVATE_KEY=""
+STORAGE_MOCK_MODE="true"
+
+# 0G Compute (decentralized AI inference)
+COMPUTE_PRIVATE_KEY=""
+COMPUTE_PROVIDER_ADDRESS=""
+
+# Agentic ID (ERC-7857)
+NEXT_PUBLIC_AGENTIC_ID_CONTRACT_ADDRESS="0x2700F6A3e505402C9daB154C5c6ab9cAEC98EF1F"
+NEXT_PUBLIC_AGENTIC_ID_TOKEN_ID=""
+```
+
+---
+
+## Network Information
+
+| Parameter | Value |
+|---|---|
+| Network | 0G Galileo Testnet |
+| Chain ID | 16602 |
+| RPC | https://evmrpc-testnet.0g.ai |
+| Explorer | https://chainscan-galileo.0g.ai |
+| Storage Explorer | https://storage-testnet.0g.ai |
+| Storage Indexer | https://indexer-storage-testnet-turbo.0g.ai |
+
+---
+
+## Project Structure
+
+```
+sifix-ai/
+├── sifix-agent/          # AI Security Agent SDK
+│   ├── src/
+│   │   ├── index.ts              # SecurityAgent orchestrator
+│   │   ├── ai/analyzer.ts        # AI risk analysis
+│   │   ├── compute/client.ts     # 0G Compute client
+│   │   ├── core/simulator.ts     # Transaction simulator
+│   │   ├── storage/client.ts     # 0G Storage client
+│   │   └── threat-intel/         # Threat intel interface
+│   └── package.json
+│
+├── sifix-dapp/           # Web Dashboard + API
+│   ├── app/
+│   │   ├── api/v1/              # 35 API routes
+│   │   ├── dashboard/           # 12 dashboard pages
+│   │   └── page.tsx             # Landing page
+│   ├── components/              # UI components
+│   ├── lib/                     # Libraries & helpers
+│   ├── prisma/                  # Database schema
+│   └── package.json
+│
+└── sifix-extension/      # Chrome Extension
+    ├── src/
+    │   ├── background/          # Service worker
+    │   ├── contents/            # Content scripts
+    │   ├── components/          # UI components
+    │   ├── hooks/               # React hooks
+    │   ├── lib/                 # Utilities
+    │   └── popup.tsx            # Extension popup
+    └── package.json
+```
+
+---
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'feat: add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+---
+
+## License
+
+All SIFIX repositories are licensed under the **MIT License**.
+
+---
+
+<div align="center">
+
+**Built for the 0G Chain APAC Hackathon 2026**
+
+[Website](https://sifix.ai) · [GitHub](https://github.com/sifix-ai) · [0G Chain](https://0g.ai)
+
+</div>
