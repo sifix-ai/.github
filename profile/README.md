@@ -583,6 +583,6 @@ All SIFIX repositories are licensed under the **MIT License**.
 
 **Built on 0G Chain, 0G Compute, 0G Storage, and 0G Agentic ID**
 
-[🌐 Website](https://sifix.vercel.app/) · [📖 Docs](https://sifix-docs.vercel.app/) · [💬 Discord](https://discord.gg/sifix) · [🐦 Twitter](https://x.com/SIFIXAI)
+[🌐 Website](https://sifix.vercel.app/) · [📚 Full Docs](https://sifix-docs.vercel.app/) · [💬 Discord](https://discord.gg/sifix) · [🐦 Twitter](https://x.com/SIFIXAI)
 
 </div>
