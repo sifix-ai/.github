@@ -542,8 +542,8 @@ sifix-ai/
 │
 ├── sifix-dapp/           # Web Dashboard + API
 │   ├── app/
-│   │   ├── api/v1/              # 35 API routes
-│   │   ├── dashboard/           # 12 dashboard pages
+│   │   ├── api/v1/              # API routes (analysis, auth, sync, community)
+│   │   ├── dashboard/           # Dashboard pages (setup, history, reputation, analytics)
 │   │   └── page.tsx             # Landing page
 │   ├── components/              # UI components
 │   ├── lib/                     # Libraries & helpers
@@ -583,6 +583,6 @@ All SIFIX repositories are licensed under the **MIT License**.
 
 **Built on 0G Chain, 0G Compute, 0G Storage, and 0G Agentic ID**
 
-[Website](https://sifix.ai) · [GitHub](https://github.com/sifix-ai) · [0G Chain](https://0g.ai)
+[🌐 Website](https://sifix.vercel.app/) · [📖 Docs](https://sifix-docs.vercel.app/) · [💬 Discord](https://discord.gg/sifix) · [🐦 Twitter](https://x.com/SIFIXAI)
 
 </div>
